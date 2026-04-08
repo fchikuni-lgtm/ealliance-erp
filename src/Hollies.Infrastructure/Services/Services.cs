@@ -5,6 +5,7 @@ using Hollies.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System.Net.Http.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -53,7 +54,7 @@ public class SequenceService(ApplicationDbContext db) : ISequenceService
     public async Task<string> NextExpenseNumberAsync()  => await Next("E", 3);
     public async Task<string> NextGrvNumberAsync()       => await Next("G", 3);
     public async Task<string> NextIncomeNumberAsync()    => await Next("I", 3);
-    public async Task<string> NextEmployeeNumberAsync()  => await Next("EMP", 4, prefix: "EMP");
+    public async Task<string> NextEmployeeNumberAsync()  => await Next("EMP", 4, "EMP");
     public async Task<string> NextSmvNumberAsync()       => $"SMV-{(await NextRaw("SMV")):D3}";
     public async Task<string> NextTransferOutNumberAsync() => $"TO-{(await NextRaw("TO")):D3}";
     public async Task<string> NextCashUpNumberAsync()    => $"CA-{(await NextRaw("CA")):D3}";
