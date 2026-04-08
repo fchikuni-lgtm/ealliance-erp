@@ -52,7 +52,7 @@ export default function AssetWizard() {
           <Field label="Category">
             <select value={form.categoryId} onChange={e => set('categoryId', e.target.value)} style={inputStyle}>
               <option value="">Select…</option>
-              {ref?.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {(ref?.productCategories ?? ref?.categories ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
         </Section>

@@ -616,7 +616,7 @@ public class ReferenceController(IApplicationDbContext db, ICurrentUserService c
                 .Select(b => new BranchDto(b.Id, b.Name, b.Region.Name, b.RegionId)).ToListAsync(ct),
             await db.Regions.Where(r => r.Active).OrderBy(r => r.Name)
                 .Select(r => new RegionDto(r.Id, r.Name)).ToListAsync(ct),
-            await db.Categories.Where(c => c.Active).OrderBy(c => c.Name)
+            await db.Categories.Where(c => c.Active && c.Type == "Expense").OrderBy(c => c.Name)
                 .Select(c => new CategoryDto(c.Id, c.Name)).ToListAsync(ct),
             await db.PaymentMethods.Where(p => p.Active)
                 .Select(p => new PaymentMethodDto(p.Id, p.Name, p.Currency.ToString(), p.Balance, p.IncomeTotal, p.ExpenseTotal)).ToListAsync(ct),
@@ -625,22 +625,25 @@ public class ReferenceController(IApplicationDbContext db, ICurrentUserService c
             await db.Workmen.Where(w => w.Active).OrderBy(w => w.Name)
                 .Select(w => new ProductDto(w.Id, w.Name)).ToListAsync(ct)
         );
+        var productCategories = await db.Categories.Where(c => c.Active && c.Type == "Product").OrderBy(c => c.Name)
+            .Select(c => new CategoryDto(c.Id, c.Name)).ToListAsync(ct);
         var currencies = await db.CurrencyRates.Where(c => c.Active)
             .Select(c => new { c.Id, c.Code, c.Name, c.RateToUsd, c.IsBase }).ToListAsync(ct);
-        return Ok(new { branches, regions, categories = cats, paymentMethods = pms, products, workmen, currencies });
+        return Ok(new { branches, regions, categories = cats, productCategories, paymentMethods = pms, products, workmen, currencies });
     }
 
     [HttpPost("categories")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> AddCategory([FromBody] AddRefRequest req, CancellationToken ct)
+    public async Task<IActionResult> AddCategory([FromBody] AddCategoryRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
-        if (await db.Categories.AnyAsync(c => c.Name == req.Name.Trim(), ct))
-            return Conflict(new { message = $"Category '{req.Name.Trim()}' already exists." });
-        var entity = new Domain.Entities.Category { Name = req.Name.Trim() };
+        var type = req.Type is "Product" ? "Product" : "Expense";
+        if (await db.Categories.AnyAsync(c => c.Name == req.Name.Trim() && c.Type == type, ct))
+            return Conflict(new { message = $"{type} category '{req.Name.Trim()}' already exists." });
+        var entity = new Domain.Entities.Category { Name = req.Name.Trim(), Type = type };
         db.Categories.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok(new { message = "Category added.", id = entity.Id });
+        return Ok(new { message = $"{type} category added.", id = entity.Id });
     }
 
     [HttpPost("branches")]
@@ -773,6 +776,7 @@ public class ReferenceController(IApplicationDbContext db, ICurrentUserService c
 }
 
 public record AddRefRequest(string Name);
+public record AddCategoryRequest(string Name, string? Type);
 public record AddBranchRequest(string Name, Guid RegionId);
 public record AddPmRequest(string Name, string Currency);
 public record AddProductRequest(string Name, string? SubName, string? Keywords,

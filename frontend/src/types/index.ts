@@ -39,6 +39,7 @@ export interface CurrencyRateDto { id: string; code: string; name: string; rateT
 export interface RevenuePointDto { id: string; name: string; branchId: string; branchName: string; type: string; isStockPoint: boolean; enabled: boolean }
 export interface ReferenceData {
   branches: BranchDto[]; regions: RegionDto[]; categories: CategoryDto[]
+  productCategories: CategoryDto[]
   paymentMethods: PaymentMethodDto[]; products: ProductDto[]; workmen: ProductDto[]
   currencies: CurrencyRateDto[]; suppliers?: SupplierSummaryDto[]
 }

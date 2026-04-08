@@ -50,7 +50,7 @@ export const authApi = {
 
 export const referenceApi = {
   getAll: () => api.get('/reference').then(r => r.data),
-  addCategory: (name: string) => api.post('/reference/categories', { name }),
+  addCategory: (name: string, type?: string) => api.post('/reference/categories', { name, type: type || 'Expense' }),
   addBranch: (name: string, regionId: string) => api.post('/reference/branches', { name, regionId }),
   addPaymentMethod: (name: string, currency: string) => api.post('/reference/payment-methods', { name, currency }),
   addRegion: (name: string) => api.post('/reference/regions', { name }),

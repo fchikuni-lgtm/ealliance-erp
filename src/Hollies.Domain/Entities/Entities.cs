@@ -24,6 +24,7 @@ public class Branch : BaseEntity
 public class Category : BaseEntity
 {
     public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = "Expense"; // "Expense" or "Product"
     public bool Active { get; set; } = true;
 }
 

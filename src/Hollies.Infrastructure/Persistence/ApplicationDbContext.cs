@@ -72,7 +72,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.HasIndex(b => b.Name).IsUnique();
         });
         mb.Entity<Region>(e => e.HasIndex(r => r.Name).IsUnique());
-        mb.Entity<Category>(e => e.HasIndex(c => c.Name).IsUnique());
+        mb.Entity<Category>(e => e.HasIndex(c => new { c.Name, c.Type }).IsUnique());
         mb.Entity<Supplier>(e => { e.HasIndex(s => s.Name).IsUnique(); e.Property(s => s.Flag).HasConversion<string>(); });
 
         // ── Expense ───────────────────────────────────────────────
