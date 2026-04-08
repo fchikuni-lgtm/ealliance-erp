@@ -23,7 +23,10 @@ export default function Settings() {
   const wrap = async (fn: () => Promise<unknown>, msg: string, resetFn: () => void) => {
     setSaving(true)
     try { await fn(); toast.success(msg); resetFn(); refresh() }
-    catch { toast.error('Failed — check inputs and try again') }
+    catch (e: unknown) {
+      const axErr = e as { response?: { data?: { message?: string } } }
+      toast.error(axErr?.response?.data?.message || 'Failed — check inputs and try again')
+    }
     setSaving(false)
   }
 

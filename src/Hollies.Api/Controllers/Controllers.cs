@@ -634,52 +634,71 @@ public class ReferenceController(IApplicationDbContext db, ICurrentUserService c
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddCategory([FromBody] AddRefRequest req, CancellationToken ct)
     {
-        db.Categories.Add(new Domain.Entities.Category { Name = req.Name });
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
+        if (await db.Categories.AnyAsync(c => c.Name == req.Name.Trim(), ct))
+            return Conflict(new { message = $"Category '{req.Name.Trim()}' already exists." });
+        var entity = new Domain.Entities.Category { Name = req.Name.Trim() };
+        db.Categories.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Category added.", id = entity.Id });
     }
 
     [HttpPost("branches")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddBranch([FromBody] AddBranchRequest req, CancellationToken ct)
     {
-        db.Branches.Add(new Domain.Entities.Branch { Name = req.Name, RegionId = req.RegionId });
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
+        if (await db.Branches.AnyAsync(b => b.Name == req.Name.Trim(), ct))
+            return Conflict(new { message = $"Branch '{req.Name.Trim()}' already exists." });
+        if (!await db.Regions.AnyAsync(r => r.Id == req.RegionId, ct))
+            return BadRequest(new { message = "Selected region does not exist." });
+        var entity = new Domain.Entities.Branch { Name = req.Name.Trim(), RegionId = req.RegionId };
+        db.Branches.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Branch added.", id = entity.Id });
     }
 
     [HttpPost("payment-methods")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddPaymentMethod([FromBody] AddPmRequest req, CancellationToken ct)
     {
-        db.PaymentMethods.Add(new Domain.Entities.PaymentMethod
-        {
-            Name = req.Name, Currency = Enum.Parse<Domain.Enums.Currency>(req.Currency, true)
-        });
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
+        if (await db.PaymentMethods.AnyAsync(p => p.Name == req.Name.Trim(), ct))
+            return Conflict(new { message = $"Payment method '{req.Name.Trim()}' already exists." });
+        if (!Enum.TryParse<Domain.Enums.Currency>(req.Currency, true, out var currency))
+            return BadRequest(new { message = $"Invalid currency '{req.Currency}'." });
+        var entity = new Domain.Entities.PaymentMethod { Name = req.Name.Trim(), Currency = currency };
+        db.PaymentMethods.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Payment method added.", id = entity.Id });
     }
 
     [HttpPost("regions")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddRegion([FromBody] AddRefRequest req, CancellationToken ct)
     {
-        db.Regions.Add(new Domain.Entities.Region { Name = req.Name });
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
+        if (await db.Regions.AnyAsync(r => r.Name == req.Name.Trim(), ct))
+            return Conflict(new { message = $"Region '{req.Name.Trim()}' already exists." });
+        var entity = new Domain.Entities.Region { Name = req.Name.Trim() };
+        db.Regions.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Region added.", id = entity.Id });
     }
 
     [HttpPost("products")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddProduct([FromBody] AddProductRequest req, CancellationToken ct)
     {
-        db.Products.Add(new Domain.Entities.Product
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Product name is required." });
+        var entity = new Domain.Entities.Product
         {
-            Name = req.Name, SubName = req.SubName, Keywords = req.Keywords,
+            Name = req.Name.Trim(), SubName = req.SubName?.Trim(), Keywords = req.Keywords,
             CostPrice = req.CostPrice, SellingPrice = req.SellingPrice, CategoryId = req.CategoryId
-        });
+        };
+        db.Products.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Product added.", id = entity.Id });
     }
 
     [HttpPut("products/{id}")]
@@ -709,9 +728,11 @@ public class ReferenceController(IApplicationDbContext db, ICurrentUserService c
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddWorkman([FromBody] AddRefRequest req, CancellationToken ct)
     {
-        db.Workmen.Add(new Domain.Entities.Workman { Name = req.Name });
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
+        var entity = new Domain.Entities.Workman { Name = req.Name.Trim() };
+        db.Workmen.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Workman added.", id = entity.Id });
     }
 
     [HttpGet("currencies")]
