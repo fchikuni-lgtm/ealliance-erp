@@ -43,11 +43,19 @@ public static class DependencyInjection
         services.AddHttpClient<IPaymentGatewayService, PaymentGatewayService>();
 
         // ── Hangfire background jobs ──────────────────────────────
+        // Strip EF-specific timeout params that confuse Hangfire's Npgsql version
+        var hangfireConnStr = string.Join(";", connStr.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => {
+                var key = p.Split('=')[0].Trim();
+                return !key.Equals("Connection Timeout", StringComparison.OrdinalIgnoreCase)
+                    && !key.Equals("Command Timeout", StringComparison.OrdinalIgnoreCase)
+                    && !key.Equals("CommandTimeout", StringComparison.OrdinalIgnoreCase);
+            }));
         services.AddHangfire(hf => hf
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(connStr));
+            .UsePostgreSqlStorage(hangfireConnStr));
         services.AddHangfireServer();
 
         return services;
