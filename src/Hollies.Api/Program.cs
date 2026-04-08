@@ -77,32 +77,38 @@ app.MapGet("/", async (ApplicationDbContext db) =>
     catch { return Results.Redirect("/setup.html"); }
 });
 
-// DB schema init — fail fast so Railway logs show the real error
+// DB schema init
+// NOTE: EnsureCreatedAsync skips table creation if ANY tables exist (including Hangfire's).
+// We check specifically for our own Users table to avoid that false positive.
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
-    Exception? lastEx = null;
     for (int attempt = 1; attempt <= 10; attempt++)
     {
         try
         {
-            var canConnect = await db.Database.CanConnectAsync();
-            startupLogger.LogInformation("DB connect={CanConnect} (attempt {Attempt})", canConnect, attempt);
-            await db.Database.EnsureCreatedAsync();
-            startupLogger.LogInformation("DB schema ready (attempt {Attempt})", attempt);
-            lastEx = null;
+            // Check if OUR tables exist (not Hangfire's)
+            var conn = db.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='Users'";
+            var tableExists = Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
+            startupLogger.LogInformation("App tables exist={TableExists} (attempt {Attempt})", tableExists, attempt);
+
+            if (!tableExists)
+            {
+                await db.Database.EnsureCreatedAsync();
+                startupLogger.LogInformation("App tables created (attempt {Attempt})", attempt);
+            }
             break;
         }
         catch (Exception ex)
         {
-            lastEx = ex;
             startupLogger.LogWarning("DB init attempt {Attempt}/10 failed: {Type}: {Msg}", attempt, ex.GetType().Name, ex.Message);
             await Task.Delay(5000);
         }
     }
-    if (lastEx != null)
-        startupLogger.LogError(lastEx, "DB init failed after 10 attempts — continuing");
 }
 
 // Register Hangfire recurring jobs in background (non-critical)
