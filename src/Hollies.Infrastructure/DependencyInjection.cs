@@ -15,9 +15,16 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         // ── Database ──────────────────────────────────────────────
-        var connStr = config.GetConnectionString("DefaultConnection")!;
+        var connStr = config.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
+
         services.AddDbContext<ApplicationDbContext>(opts =>
-            opts.UseNpgsql(connStr, o => o.MigrationsAssembly("Hollies.Infrastructure")));
+            opts.UseNpgsql(connStr, o =>
+            {
+                o.MigrationsAssembly("Hollies.Infrastructure");
+                o.CommandTimeout(60);
+                o.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorCodesToAdd: null);
+            }));
 
         services.AddScoped<IApplicationDbContext>(p => p.GetRequiredService<ApplicationDbContext>());
 
@@ -35,13 +42,17 @@ public static class DependencyInjection
         // ── Payment Gateway ───────────────────────────────────────
         services.AddHttpClient<IPaymentGatewayService, PaymentGatewayService>();
 
-        // ── Hangfire background jobs ──────────────────────────────
+        // ── Hangfire background jobs (with retry on failure) ──────
         services.AddHangfire(hf => hf
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(connStr));
-        services.AddHangfireServer();
+            .UsePostgreSqlStorage(o => o.UseNpgsqlConnection(connStr)));
+        services.AddHangfireServer(opts =>
+        {
+            opts.WorkerCount = 2;
+            opts.Queues = ["default"];
+        });
 
         return services;
     }

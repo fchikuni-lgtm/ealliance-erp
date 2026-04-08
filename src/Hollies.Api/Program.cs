@@ -6,18 +6,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Serilog;
 using System.Text;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
-builder.Host.UseSerilog();
+// Console-only logging (Railway captures stdout)
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -42,14 +37,21 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "eAlliance API", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme { Description = "JWT Bearer token", Name = "Authorization", In = ParameterLocation.Header, Type = SecuritySchemeType.ApiKey, Scheme = "Bearer" });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement { [new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }] = [] });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Bearer token", Name = "Authorization",
+        In = ParameterLocation.Header, Type = SecuritySchemeType.ApiKey, Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }] = []
+    });
 });
-builder.Services.AddCors(opts => opts.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+builder.Services.AddCors(opts =>
+    opts.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();
 
-app.UseSerilogRequestLogging();
 app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "eAlliance API v1"));
@@ -58,12 +60,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<Hollies.Api.Middleware.ExceptionMiddleware>();
 app.MapControllers();
-app.MapHangfireDashboard("/jobs");
 
-// Health check — used by Railway for zero-downtime deploys
+try { app.MapHangfireDashboard("/jobs"); } catch { /* skip if hangfire not ready */ }
+
+// Health check — always responds immediately (no DB dependency)
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-// Redirect root to setup page if no users exist, otherwise to swagger
+// Redirect root to setup page
 app.MapGet("/", async (ApplicationDbContext db) =>
 {
     try
@@ -71,52 +74,48 @@ app.MapGet("/", async (ApplicationDbContext db) =>
         var hasUsers = await db.Users.AnyAsync();
         return hasUsers ? Results.Redirect("/swagger") : Results.Redirect("/setup.html");
     }
-    catch
-    {
-        return Results.Redirect("/setup.html");
-    }
+    catch { return Results.Redirect("/setup.html"); }
 });
 
-// DB schema init with retry — waits up to 60s for PostgreSQL to be ready
-using (var scope = app.Services.CreateScope())
+// DB schema init as background task — app starts immediately, DB init happens in background
+_ = Task.Run(async () =>
 {
+    await Task.Delay(5000); // Give app 5s to start accepting requests first
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var maxRetries = 10;
-    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+    for (int attempt = 1; attempt <= 15; attempt++)
     {
         try
         {
             await db.Database.EnsureCreatedAsync();
             logger.LogInformation("Database schema ready (attempt {Attempt})", attempt);
+
+            // Register Hangfire jobs after DB is confirmed ready
+            try
+            {
+                using var jobScope = app.Services.CreateScope();
+                var jobManager = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+                jobManager.AddOrUpdate("daily-digest",
+                    () => Console.WriteLine($"[{DateTime.UtcNow}] Daily digest"), "0 6 * * *");
+                jobManager.AddOrUpdate("payroll-reminder",
+                    () => Console.WriteLine($"[{DateTime.UtcNow}] Payroll reminder"), "0 7 1 * *");
+                logger.LogInformation("Hangfire jobs registered");
+            }
+            catch (Exception ex) { logger.LogWarning("Hangfire jobs skipped: {Msg}", ex.Message); }
+
             break;
         }
-        catch (Exception ex) when (attempt < maxRetries)
+        catch (Exception ex) when (attempt < 15)
         {
-            logger.LogWarning("DB not ready (attempt {Attempt}/{Max}): {Msg} — retrying in 6s…",
-                attempt, maxRetries, ex.Message);
-            await Task.Delay(6000);
+            logger.LogWarning("DB not ready (attempt {Attempt}/15): {Msg} — retrying in 8s", attempt, ex.Message);
+            await Task.Delay(8000);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Database init failed after {Max} attempts — starting anyway", maxRetries);
+            logger.LogError(ex, "DB init failed after 15 attempts");
         }
     }
-}
-
-// Register Hangfire recurring jobs (wrapped — Hangfire storage may not be ready immediately)
-try
-{
-    using var scope = app.Services.CreateScope();
-    var jobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    jobManager.AddOrUpdate("daily-digest",
-        () => Console.WriteLine($"[{DateTime.UtcNow}] Daily digest job fired"), "0 6 * * *");
-    jobManager.AddOrUpdate("payroll-reminder",
-        () => Console.WriteLine($"[{DateTime.UtcNow}] Payroll reminder job fired"), "0 7 1 * *");
-}
-catch (Exception ex)
-{
-    Log.Warning("Hangfire job registration skipped: {Msg}", ex.Message);
-}
+});
 
 app.Run();
