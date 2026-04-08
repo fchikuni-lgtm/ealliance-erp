@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hollies — First Time Setup</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:linear-gradient(160deg,#0a1628,#1e3a5f);display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px}
+.card{background:#fff;border-radius:20px;padding:40px 32px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,0.4)}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{color:#0a1628;font-size:32px;font-weight:800;letter-spacing:-1px}
+.logo p{color:#6b7280;font-size:13px;margin-top:6px}
+.badge{display:inline-block;background:#f0fdf4;color:#15803d;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-top:8px}
+.step{background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:24px;border-left:4px solid #f59e0b}
+.step-title{font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px}
+.step-text{font-size:13px;color:#6b7280;margin-top:4px}
+label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+input,select{width:100%;padding:12px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:15px;outline:none;font-family:inherit;transition:border-color .2s;margin-bottom:14px}
+input:focus,select:focus{border-color:#0a1628}
+.btn{width:100%;padding:14px;background:#f59e0b;color:#0a1628;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;margin-top:4px}
+.btn:hover{opacity:.9}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{background:#fef2f2;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+.ok{background:#f0fdf4;color:#15803d;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+.divider{border:none;border-top:1px solid #f3f4f6;margin:20px 0}
+.sec{font-size:13px;font-weight:700;color:#374151;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.user-row{background:#f9fafb;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.role-tag{font-size:11px;font-weight:600;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px}
+.done-screen{text-align:center;display:none}
+.done-ico{font-size:64px;margin-bottom:16px}
+.done-title{font-size:22px;font-weight:700;color:#0a1628;margin-bottom:8px}
+.done-text{font-size:14px;color:#6b7280;line-height:1.6;margin-bottom:24px}
+.done-btn{display:inline-block;background:#0a1628;color:#fff;border-radius:12px;padding:14px 32px;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;border:none;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="card" id="mainCard">
+  <div class="logo">
+    <h1>Hollies</h1>
+    <p>GRV · Expenses · Job Masters HR</p>
+    <span class="badge">✅ First Time Setup</span>
+  </div>
+
+  <div class="step">
+    <div class="step-title">You only do this once</div>
+    <div class="step-text">Fill in the details below to create the admin account. After this the system is ready for all staff to use.</div>
+  </div>
+
+  <!-- ADMIN ACCOUNT -->
+  <div class="sec">Step 1 — Admin Account</div>
+  <div id="err1" class="err"></div>
+  <label>Full Name</label>
+  <input id="name" type="text" placeholder="e.g. Biggie" />
+  <label>Email Address</label>
+  <input id="email" type="email" placeholder="biggie@hollies.co.zw" />
+  <label>Password</label>
+  <input id="password" type="password" placeholder="Choose a strong password" />
+  <label>Confirm Password</label>
+  <input id="confirm" type="password" placeholder="Repeat password" />
+
+  <hr class="divider">
+
+  <!-- ADDITIONAL USERS -->
+  <div class="sec">Step 2 — Add Staff Accounts (optional)</div>
+  <p style="font-size:13px;color:#6b7280;margin-bottom:14px">Add other users now or skip and add them later from inside the app.</p>
+
+  <div id="userList"></div>
+
+  <div style="background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:14px">
+    <label>Name</label><input id="uname" type="text" placeholder="Staff member name" style="margin-bottom:10px">
+    <label>Email</label><input id="uemail" type="email" placeholder="email@hollies.co.zw" style="margin-bottom:10px">
+    <label>Password</label><input id="upass" type="password" placeholder="Password" style="margin-bottom:10px">
+    <label>Role</label>
+    <select id="urole" style="margin-bottom:10px">
+      <option value="Reviewer">Reviewer — can review expenses</option>
+      <option value="Approver">Approver — can approve expenses</option>
+      <option value="AccountsManager">Accounts Manager — review, approve, pay</option>
+      <option value="HrOfficer">HR Officer — create, attendance</option>
+      <option value="BranchManager">Branch Manager</option>
+      <option value="Cashier">Cashier — create expenses only</option>
+    </select>
+    <button onclick="addUser()" style="width:100%;padding:10px;background:#0a1628;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">+ Add This Staff Member</button>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SUBMIT -->
+  <div id="errmain" class="err"></div>
+  <div id="okmain" class="ok"></div>
+  <button class="btn" id="setupBtn" onclick="setup()">Complete Setup & Open Hollies</button>
+  <p style="text-align:center;font-size:12px;color:#9ca3af;margin-top:12px">This page disappears permanently after setup</p>
+</div>
+
+<!-- DONE SCREEN -->
+<div class="card done-screen" id="doneCard">
+  <div class="done-ico">🎉</div>
+  <div class="done-title">Setup Complete!</div>
+  <div class="done-text">
+    Hollies is ready.<br><br>
+    Sign in with your email and password.<br>
+    Share the link with your staff.
+  </div>
+  <button class="done-btn" onclick="goToApp()">Open Hollies App →</button>
+</div>
+
+<script>
+const users = []
+const PERMS = {
+  Reviewer:       ['review'],
+  Approver:       ['review','approve'],
+  AccountsManager:['review','approve','pay','acquit','income_approve'],
+  HrOfficer:      ['create','review'],
+  BranchManager:  ['create','review'],
+  Cashier:        ['create'],
+}
+
+function addUser() {
+  const n=document.getElementById('uname').value.trim()
+  const e=document.getElementById('uemail').value.trim()
+  const p=document.getElementById('upass').value.trim()
+  const r=document.getElementById('urole').value
+  if (!n||!e||!p) { alert('Fill in name, email and password for this staff member'); return }
+  users.push({ name:n, email:e, password:p, role:r, permissions:PERMS[r]||['create'] })
+  renderUsers()
+  document.getElementById('uname').value=''
+  document.getElementById('uemail').value=''
+  document.getElementById('upass').value=''
+}
+
+function renderUsers() {
+  const c=document.getElementById('userList')
+  c.innerHTML = users.map((u,i)=>`
+    <div class="user-row">
+      <div><strong>${u.name}</strong><br><span style="color:#6b7280;font-size:12px">${u.email}</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="role-tag">${u.role}</span>
+        <button onclick="removeUser(${i})" style="border:none;background:#fef2f2;color:#dc2626;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit">✕</button>
+      </div>
+    </div>`).join('')
+}
+
+function removeUser(i) { users.splice(i,1); renderUsers() }
+
+async function setup() {
+  const name=document.getElementById('name').value.trim()
+  const email=document.getElementById('email').value.trim()
+  const password=document.getElementById('password').value
+  const confirm=document.getElementById('confirm').value
+  const errEl=document.getElementById('errmain')
+  const okEl=document.getElementById('okmain')
+
+  errEl.style.display='none'
+  okEl.style.display='none'
+
+  if (!name||!email||!password) { errEl.textContent='Name, email and password are all required.'; errEl.style.display='block'; return }
+  if (password !== confirm) { errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return }
+  if (password.length < 8) { errEl.textContent='Password must be at least 8 characters.'; errEl.style.display='block'; return }
+
+  const btn=document.getElementById('setupBtn')
+  btn.disabled=true
+  btn.textContent='Setting up…'
+
+  try {
+    // Create admin
+    const adminRes = await fetch('/api/setup', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name, email, password,
+        role:'Admin',
+        permissions:['create','review','approve','pay','acquit','audit','reverse','flag','unflag','income_approve']
+      })
+    })
+    if (!adminRes.ok) {
+      const err = await adminRes.json()
+      throw new Error(err.message || 'Setup failed')
+    }
+
+    // Login to get token
+    const loginRes = await fetch('/api/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password })
+    })
+    const loginData = await loginRes.json()
+    const token = loginData.accessToken
+
+    // Create additional users
+    for (const u of users) {
+      await fetch('/api/setup/user', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body: JSON.stringify(u)
+      })
+    }
+
+    okEl.textContent='✅ Setup complete! Opening Hollies…'
+    okEl.style.display='block'
+    setTimeout(()=>{
+      document.getElementById('mainCard').style.display='none'
+      document.getElementById('doneCard').style.display='block'
+    }, 1200)
+
+  } catch(err) {
+    errEl.textContent = err.message || 'Something went wrong. Check that the system is running.'
+    errEl.style.display='block'
+    btn.disabled=false
+    btn.textContent='Complete Setup & Open Hollies'
+  }
+}
+
+function goToApp() {
+  window.location.href = 'http://localhost:3000'
+}
+
+// Check if setup already done
+fetch('/api/setup/status').then(r=>r.json()).then(d=>{
+  if (d.setupComplete) {
+    document.getElementById('mainCard').innerHTML=`
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:16px">🔒</div>
+        <div style="font-size:20px;font-weight:700;color:#0a1628;margin-bottom:8px">Setup Already Complete</div>
+        <div style="font-size:14px;color:#6b7280;margin-bottom:24px">The system is already configured. This page is disabled.</div>
+        <a href="http://localhost:3000" style="display:inline-block;background:#0a1628;color:#fff;border-radius:12px;padding:14px 32px;font-size:15px;font-weight:700;text-decoration:none">Go to Hollies →</a>
+      </div>`
+  }
+})
+</script>
+</body>
+</html>

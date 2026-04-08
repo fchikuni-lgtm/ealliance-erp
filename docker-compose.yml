@@ -1,0 +1,73 @@
+version: '3.9'
+
+services:
+
+  # ── PostgreSQL database ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hollies-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Holl1es@SecureDB!
+      POSTGRES_DB: hollies
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── .NET 8 API ────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: src/Hollies.Api/Dockerfile
+    container_name: hollies-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=hollies;Username=postgres;Password=Holl1es@SecureDB!
+      - Jwt__Secret=YourSuperSecretKeyHereMustBe32CharsMinimum!!
+      - Jwt__Issuer=https://api.hollies.co.zw
+      - Jwt__Audience=https://hollies.co.zw
+      - WhatsApp__Token=
+      - WhatsApp__PhoneId=
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── React frontend ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hollies-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+  # ── Nginx reverse proxy (production) ─────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: hollies-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+      - frontend
+
+volumes:
+  postgres_data:

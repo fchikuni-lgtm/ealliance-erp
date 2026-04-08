@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <AssemblyName>Hollies.BackgroundWorkers</AssemblyName>
+    <RootNamespace>Hollies.BackgroundWorkers</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hollies.Application\Hollies.Application.csproj" />
+    <ProjectReference Include="..\Hollies.Infrastructure\Hollies.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.9" />
+  </ItemGroup>
+</Project>

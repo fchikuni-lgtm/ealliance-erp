@@ -1,0 +1,22 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.0.0
+
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hollies.Api", "src\Hollies.Api\Hollies.Api.csproj", "{A1111111-1111-1111-1111-111111111111}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hollies.Application", "src\Hollies.Application\Hollies.Application.csproj", "{A2222222-2222-2222-2222-222222222222}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hollies.Domain", "src\Hollies.Domain\Hollies.Domain.csproj", "{A3333333-3333-3333-3333-333333333333}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hollies.Infrastructure", "src\Hollies.Infrastructure\Hollies.Infrastructure.csproj", "{A4444444-4444-4444-4444-444444444444}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hollies.BackgroundWorkers", "src\Hollies.BackgroundWorkers\Hollies.BackgroundWorkers.csproj", "{A5555555-5555-5555-5555-555555555555}"
+EndProject
+
+Global
+  GlobalSection(SolutionConfigurationPlatforms) = preSolution
+    Debug|Any CPU = Debug|Any CPU
+    Release|Any CPU = Release|Any CPU
+  EndGlobalSection
+EndGlobal
