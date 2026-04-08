@@ -529,7 +529,7 @@ namespace Hollies.Application.Features.Income.Commands
         public async Task<string> Handle(CreateIncomeCommand req, CancellationToken ct)
         {
             var num = await seq.NextIncomeNumberAsync();
-            db.Incomes.Add(new Income
+            db.Incomes.Add(new Hollies.Domain.Entities.Income
             {
                 IncomeNumber = num, Date = req.Date, Source = req.Source,
                 PaymentMethodId = req.PaymentMethodId,
