@@ -18,8 +18,17 @@ public static class DependencyInjection
         var connStr = config.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
 
+        // Strip timeout params not recognized by Npgsql 8.x connection string builder
+        var safeConnStr = string.Join(";", connStr.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => {
+                var key = p.Split('=')[0].Trim();
+                return !key.Equals("Connection Timeout", StringComparison.OrdinalIgnoreCase)
+                    && !key.Equals("Command Timeout", StringComparison.OrdinalIgnoreCase)
+                    && !key.Equals("CommandTimeout", StringComparison.OrdinalIgnoreCase);
+            }));
+
         services.AddDbContext<ApplicationDbContext>(opts =>
-            opts.UseNpgsql(connStr, o =>
+            opts.UseNpgsql(safeConnStr, o =>
             {
                 o.MigrationsAssembly("Hollies.Infrastructure");
                 o.CommandTimeout(60);
@@ -43,19 +52,11 @@ public static class DependencyInjection
         services.AddHttpClient<IPaymentGatewayService, PaymentGatewayService>();
 
         // ── Hangfire background jobs ──────────────────────────────
-        // Strip EF-specific timeout params that confuse Hangfire's Npgsql version
-        var hangfireConnStr = string.Join(";", connStr.Split(';', StringSplitOptions.RemoveEmptyEntries)
-            .Where(p => {
-                var key = p.Split('=')[0].Trim();
-                return !key.Equals("Connection Timeout", StringComparison.OrdinalIgnoreCase)
-                    && !key.Equals("Command Timeout", StringComparison.OrdinalIgnoreCase)
-                    && !key.Equals("CommandTimeout", StringComparison.OrdinalIgnoreCase);
-            }));
         services.AddHangfire(hf => hf
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(hangfireConnStr));
+            .UsePostgreSqlStorage(safeConnStr));
         services.AddHangfireServer();
 
         return services;
