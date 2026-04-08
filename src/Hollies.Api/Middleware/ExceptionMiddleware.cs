@@ -24,7 +24,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             FluentValidation.ValidationException e =>
                 (HttpStatusCode.BadRequest, string.Join("; ", e.Errors.Select(x => x.ErrorMessage))),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized."),
-            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
+            _ => (HttpStatusCode.InternalServerError, $"{ex.GetType().Name}: {ex.Message}")
         };
 
         if (status == HttpStatusCode.InternalServerError)
