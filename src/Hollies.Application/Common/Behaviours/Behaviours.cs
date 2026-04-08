@@ -1,4 +1,5 @@
 using FluentValidation;
+using Hollies.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -73,9 +74,3 @@ public class PerformanceBehaviour<TRequest, TResponse>(
     }
 }
 
-// Fix missing interface reference
-public interface ICurrentUserService
-{
-    Guid UserId { get; }
-    string UserName { get; }
-}
