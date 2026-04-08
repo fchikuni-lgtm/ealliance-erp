@@ -66,9 +66,9 @@ export function Card({ children, onClick }: { children: ReactNode; onClick?: () 
 }
 
 // ── Field ─────────────────────────────────────────────────────────
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, children, style }: { label: string; children: ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 14, ...style }}>
       <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>{label}</label>
       {children}
     </div>
