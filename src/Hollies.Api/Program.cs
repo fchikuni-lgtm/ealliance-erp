@@ -77,45 +77,45 @@ app.MapGet("/", async (ApplicationDbContext db) =>
     catch { return Results.Redirect("/setup.html"); }
 });
 
-// DB schema init as background task — app starts immediately, DB init happens in background
-_ = Task.Run(async () =>
+// DB schema init — run synchronously before accepting requests
 {
-    await Task.Delay(5000); // Give app 5s to start accepting requests first
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
-    for (int attempt = 1; attempt <= 15; attempt++)
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+    for (int attempt = 1; attempt <= 20; attempt++)
     {
         try
         {
             await db.Database.EnsureCreatedAsync();
-            logger.LogInformation("Database schema ready (attempt {Attempt})", attempt);
-
-            // Register Hangfire jobs after DB is confirmed ready
-            try
-            {
-                using var jobScope = app.Services.CreateScope();
-                var jobManager = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-                jobManager.AddOrUpdate("daily-digest",
-                    () => Console.WriteLine($"[{DateTime.UtcNow}] Daily digest"), "0 6 * * *");
-                jobManager.AddOrUpdate("payroll-reminder",
-                    () => Console.WriteLine($"[{DateTime.UtcNow}] Payroll reminder"), "0 7 1 * *");
-                logger.LogInformation("Hangfire jobs registered");
-            }
-            catch (Exception ex) { logger.LogWarning("Hangfire jobs skipped: {Msg}", ex.Message); }
-
+            startupLogger.LogInformation("DB schema ready (attempt {Attempt})", attempt);
             break;
         }
-        catch (Exception ex) when (attempt < 15)
+        catch (Exception ex) when (attempt < 20)
         {
-            logger.LogWarning("DB not ready (attempt {Attempt}/15): {Msg} — retrying in 8s", attempt, ex.Message);
-            await Task.Delay(8000);
+            startupLogger.LogWarning("DB not ready (attempt {Attempt}/20): {Msg} — retrying in 5s", attempt, ex.Message);
+            await Task.Delay(5000);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "DB init failed after 15 attempts");
+            startupLogger.LogError(ex, "DB init failed after 20 attempts — starting anyway");
         }
     }
+}
+
+// Register Hangfire recurring jobs in background (non-critical)
+_ = Task.Run(async () =>
+{
+    await Task.Delay(3000);
+    try
+    {
+        using var jobScope = app.Services.CreateScope();
+        var jobManager = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        jobManager.AddOrUpdate("daily-digest",
+            () => Console.WriteLine($"[{DateTime.UtcNow}] Daily digest"), "0 6 * * *");
+        jobManager.AddOrUpdate("payroll-reminder",
+            () => Console.WriteLine($"[{DateTime.UtcNow}] Payroll reminder"), "0 7 1 * *");
+    }
+    catch { /* non-critical */ }
 });
 
 app.Run();
