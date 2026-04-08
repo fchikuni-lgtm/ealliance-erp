@@ -77,29 +77,32 @@ app.MapGet("/", async (ApplicationDbContext db) =>
     catch { return Results.Redirect("/setup.html"); }
 });
 
-// DB schema init — run synchronously before accepting requests
+// DB schema init — fail fast so Railway logs show the real error
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
-    for (int attempt = 1; attempt <= 20; attempt++)
+    Exception? lastEx = null;
+    for (int attempt = 1; attempt <= 10; attempt++)
     {
         try
         {
+            var canConnect = await db.Database.CanConnectAsync();
+            startupLogger.LogInformation("DB connect={CanConnect} (attempt {Attempt})", canConnect, attempt);
             await db.Database.EnsureCreatedAsync();
             startupLogger.LogInformation("DB schema ready (attempt {Attempt})", attempt);
+            lastEx = null;
             break;
-        }
-        catch (Exception ex) when (attempt < 20)
-        {
-            startupLogger.LogWarning("DB not ready (attempt {Attempt}/20): {Msg} — retrying in 5s", attempt, ex.Message);
-            await Task.Delay(5000);
         }
         catch (Exception ex)
         {
-            startupLogger.LogError(ex, "DB init failed after 20 attempts — starting anyway");
+            lastEx = ex;
+            startupLogger.LogWarning("DB init attempt {Attempt}/10 failed: {Type}: {Msg}", attempt, ex.GetType().Name, ex.Message);
+            await Task.Delay(5000);
         }
     }
+    if (lastEx != null)
+        startupLogger.LogError(lastEx, "DB init failed after 10 attempts — continuing");
 }
 
 // Register Hangfire recurring jobs in background (non-critical)
