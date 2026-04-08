@@ -158,7 +158,7 @@ public class StockCountsController(IApplicationDbContext db, ICurrentUserService
             RevenuePointId = req.RevenuePointId, Date = DateOnly.Parse(req.Date),
             Type = Enum.Parse<StockCountType>(req.Type, true),
             CountMethod = Enum.Parse<StockCountMethod>(req.CountMethod, true),
-            CopiedFromDate = req.CopiedFromDate.HasValue ? DateOnly.Parse(req.CopiedFromDate.Value) : null,
+            CopiedFromDate = req.CopiedFromDate != null ? DateOnly.Parse(req.CopiedFromDate) : null,
             IsFinalised = false, CreatedById = cu.UserId
         };
         foreach (var item in req.Items)
