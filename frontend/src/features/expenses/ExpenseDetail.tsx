@@ -92,7 +92,7 @@ export default function ExpenseDetail() {
         {/* History */}
         <div>
           <div style={{ fontSize:12, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:12 }}>History</div>
-          <Timeline items={e.history.map(h => ({ action: h.action, by: h.doneByName, date: h.createdAt, notes: h.notes }))} />
+          <Timeline items={e.history.map((h: { action: string; doneByName: string; createdAt: string; notes?: string }) => ({ action: h.action, by: h.doneByName, date: h.createdAt, notes: h.notes }))} />
         </div>
       </div>
 

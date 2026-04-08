@@ -17,7 +17,7 @@ const FILTERS = [
 const borderColor = (e: ExpenseListDto) => {
   if (e.isFlagged) return '#ef4444'
   return { Pending:'#f97316', Reviewed:'#3b82f6', Approved:'#10b981',
-           Paid:'#059669', Acquitted:'#8b5cf6', Audited:'#6b7280', Reversed:'#9333ea' }[e.status] ?? '#e5e7eb'
+           Paid:'#059669', Acquitted:'#8b5cf6', Audited:'#6b7280', Reversed:'#9333ea', Rejected:'#ef4444' }[e.status] ?? '#e5e7eb'
 }
 
 export default function ExpenseListImpl() {

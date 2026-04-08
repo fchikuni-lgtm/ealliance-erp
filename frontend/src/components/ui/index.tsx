@@ -196,3 +196,9 @@ export function WizardLayout({ title, step, totalSteps, stepLabel, children, onB
 // ── Fmt ───────────────────────────────────────────────────────────
 export const fmt = (n?: number) => Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 export const today = () => new Date().toISOString().split('T')[0]
+
+// ── Toast ─────────────────────────────────────────────────────────
+export const toast = {
+  success: (msg: string) => { const t = document.createElement('div'); t.textContent = msg; t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0a1628;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none'; document.body.appendChild(t); setTimeout(() => t.remove(), 3000) },
+  error: (msg: string) => { const t = document.createElement('div'); t.textContent = msg; t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none'; document.body.appendChild(t); setTimeout(() => t.remove(), 3000) },
+}

@@ -40,7 +40,7 @@ export interface RevenuePointDto { id: string; name: string; branchId: string; b
 export interface ReferenceData {
   branches: BranchDto[]; regions: RegionDto[]; categories: CategoryDto[]
   paymentMethods: PaymentMethodDto[]; products: ProductDto[]; workmen: ProductDto[]
-  currencies: CurrencyRateDto[]
+  currencies: CurrencyRateDto[]; suppliers?: SupplierSummaryDto[]
 }
 
 // ── StockMaster types ─────────────────────────────────────────────
