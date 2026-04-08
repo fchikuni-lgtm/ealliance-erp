@@ -4,6 +4,7 @@ using Hollies.Infrastructure;
 using Hollies.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -101,7 +102,7 @@ app.MapGet("/", async (ApplicationDbContext db) =>
             {
                 // EnsureCreatedAsync's internal HasTablesAsync() finds Hangfire tables and skips creation.
                 // Call CreateTablesAsync() directly to bypass that false-positive check.
-                var creator = db.Database.GetService<IRelationalDatabaseCreator>();
+                var creator = db.GetInfrastructure().GetRequiredService<IRelationalDatabaseCreator>();
                 await creator.CreateTablesAsync();
                 startupLogger.LogInformation("App tables created via CreateTablesAsync (attempt {Attempt})", attempt);
             }
