@@ -65,7 +65,7 @@ public class SequenceService(ApplicationDbContext db) : ISequenceService
     private async Task<string> Next(string prefix, int digits, string? prefix2 = null)
     {
         var n = await NextRaw(prefix2 ?? prefix);
-        return prefix2 != null ? $"{prefix}{n:D4}" : $"{prefix}{n:D{digits}}";
+        return prefix2 != null ? $"{prefix}{n:D4}" : $"{prefix}{n.ToString("D" + digits)}";
     }
 
     // PostgreSQL advisory lock prevents duplicate numbers under concurrent load
