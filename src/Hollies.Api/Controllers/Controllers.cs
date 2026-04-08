@@ -747,12 +747,17 @@ public class ReferenceController(IApplicationDbContext db, ICurrentUserService c
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddCurrency([FromBody] AddCurrencyRequest req, CancellationToken ct)
     {
-        db.CurrencyRates.Add(new Domain.Entities.CurrencyRate
+        if (string.IsNullOrWhiteSpace(req.Code) || string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { message = "Code and name are required." });
+        if (await db.CurrencyRates.AnyAsync(c => c.Code == req.Code.Trim(), ct))
+            return Conflict(new { message = $"Currency '{req.Code.Trim()}' already exists." });
+        var entity = new Domain.Entities.CurrencyRate
         {
-            Code = req.Code, Name = req.Name, RateToUsd = req.RateToUsd
-        });
+            Code = req.Code.Trim(), Name = req.Name.Trim(), RateToUsd = req.RateToUsd
+        };
+        db.CurrencyRates.Add(entity);
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Currency added.", id = entity.Id });
     }
 
     [HttpPut("currencies/{id}")]

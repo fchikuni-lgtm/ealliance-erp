@@ -35,11 +35,13 @@ public class RevenuePointsController(IApplicationDbContext db, ICurrentUserServi
     [Authorize(Roles = "Admin,BranchManager")]
     public async Task<IActionResult> Create([FromBody] CreateRevPtRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest(new { message = "Name is required." });
+        if (!Enum.TryParse<RevenuePointType>(req.Type, true, out var rpType))
+            return BadRequest(new { message = $"Invalid type '{req.Type}'." });
         var rp = new RevenuePoint
         {
-            Name = req.Name, BranchId = req.BranchId,
-            Type = Enum.Parse<RevenuePointType>(req.Type, true),
-            IsStockPoint = req.IsStockPoint, Enabled = true
+            Name = req.Name.Trim(), BranchId = req.BranchId,
+            Type = rpType, IsStockPoint = req.IsStockPoint, Enabled = true
         };
         db.RevenuePoints.Add(rp);
         await db.SaveChangesAsync(ct);
@@ -151,13 +153,18 @@ public class StockCountsController(IApplicationDbContext db, ICurrentUserService
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStockCountRequest req, CancellationToken ct)
     {
+        if (req.Items == null || req.Items.Count == 0)
+            return BadRequest(new { message = "At least one item is required." });
+        if (!Enum.TryParse<StockCountType>(req.Type, true, out var scType))
+            return BadRequest(new { message = $"Invalid count type '{req.Type}'." });
+        if (!Enum.TryParse<StockCountMethod>(req.CountMethod, true, out var scMethod))
+            return BadRequest(new { message = $"Invalid count method '{req.CountMethod}'." });
         var num = await seq.NextStockCountNumberAsync();
         var count = new StockCount
         {
             CountNumber = num, BranchId = req.BranchId,
             RevenuePointId = req.RevenuePointId, Date = DateOnly.Parse(req.Date),
-            Type = Enum.Parse<StockCountType>(req.Type, true),
-            CountMethod = Enum.Parse<StockCountMethod>(req.CountMethod, true),
+            Type = scType, CountMethod = scMethod,
             CopiedFromDate = req.CopiedFromDate != null ? DateOnly.Parse(req.CopiedFromDate) : null,
             IsFinalised = false, CreatedById = cu.UserId
         };
@@ -237,6 +244,8 @@ public class SmvController(IApplicationDbContext db, ICurrentUserService cu,
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSmvRequest req, CancellationToken ct)
     {
+        if (req.Items == null || req.Items.Count == 0)
+            return BadRequest(new { message = "At least one item is required." });
         var num = await seq.NextSmvNumberAsync();
         var smv = new Smv
         {
@@ -341,12 +350,16 @@ public class TransferOutsController(IApplicationDbContext db, ICurrentUserServic
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateToRequest req, CancellationToken ct)
     {
+        if (req.Items == null || req.Items.Count == 0)
+            return BadRequest(new { message = "At least one item is required." });
+        if (!Enum.TryParse<TransferOutType>(req.Type, true, out var toType))
+            return BadRequest(new { message = $"Invalid type '{req.Type}'." });
         var num = await seq.NextTransferOutNumberAsync();
         var to = new TransferOut
         {
             ToNumber = num, BranchId = req.BranchId,
             RevenuePointId = req.RevenuePointId, Date = DateOnly.Parse(req.Date),
-            Type = Enum.Parse<TransferOutType>(req.Type, true),
+            Type = toType,
             BeneficiaryName = req.BeneficiaryName,
             // Breakage and Ullage auto-approved; others need approval
             Status = req.Type is "Breakage" or "Ullage"
@@ -462,6 +475,8 @@ public class CashUpsController(IApplicationDbContext db, ICurrentUserService cu,
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCashUpRequest req, CancellationToken ct)
     {
+        if (req.Entries == null || req.Entries.Count == 0)
+            return BadRequest(new { message = "At least one entry is required." });
         var num = await seq.NextCashUpNumberAsync();
         var totalUsd = req.Entries.Sum(e => e.AmountUsd);
         var cu2 = new CashUp
@@ -719,11 +734,17 @@ public class AdjustmentsController(IApplicationDbContext db, ICurrentUserService
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAdjRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Reason))
+            return BadRequest(new { message = "Reason is required for adjustments." });
+        if (req.Qty <= 0)
+            return BadRequest(new { message = "Quantity must be greater than zero." });
+        if (!Enum.TryParse<AdjustmentDirection>(req.Direction, true, out var dir))
+            return BadRequest(new { message = $"Invalid direction '{req.Direction}'." });
         var adj = new StockAdjustment
         {
             BranchId = req.BranchId, RevenuePointId = req.RevenuePointId,
             ProductId = req.ProductId, Date = DateOnly.Parse(req.Date),
-            Qty = req.Qty, Direction = Enum.Parse<AdjustmentDirection>(req.Direction, true),
+            Qty = req.Qty, Direction = dir,
             Reason = req.Reason, Status = AdjustmentStatus.Pending,
             CreatedById = cu.UserId
         };
@@ -800,14 +821,16 @@ public class DebtorsController(IApplicationDbContext db, ICurrentUserService cu)
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDebtorRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { message = "Debtor name is required." });
         var d = new Debtor
         {
-            BranchId = req.BranchId, Name = req.Name, Phone = req.Phone,
+            BranchId = req.BranchId, Name = req.Name.Trim(), Phone = req.Phone,
             CreditLimit = req.CreditLimit, CreatedById = cu.UserId
         };
         db.Debtors.Add(d);
         await db.SaveChangesAsync(ct);
-        return Ok(new { d.Id });
+        return Ok(new { d.Id, d.Name });
     }
 
     [HttpPost("{id}/payment")]

@@ -1,4 +1,5 @@
 using Hollies.Domain.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;
 
@@ -24,6 +25,10 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
             FluentValidation.ValidationException e =>
                 (HttpStatusCode.BadRequest, string.Join("; ", e.Errors.Select(x => x.ErrorMessage))),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized."),
+            DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23505" } pgEx }
+                => (HttpStatusCode.Conflict, $"A record with that value already exists. ({pgEx.ConstraintName})"),
+            DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23503" } }
+                => (HttpStatusCode.BadRequest, "Referenced record does not exist. Check your selections."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 

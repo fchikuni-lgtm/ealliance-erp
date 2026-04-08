@@ -31,12 +31,14 @@ public class AssetLocationsController(IApplicationDbContext db) : ControllerBase
     [Authorize(Roles = "Admin,AssetManager")]
     public async Task<IActionResult> Create([FromBody] CreateLocationRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { message = "Location name is required." });
         var level = req.ParentId.HasValue
             ? (await db.AssetLocations.FirstOrDefaultAsync(l => l.Id == req.ParentId, ct))?.Level + 1 ?? 0
             : 0;
         var loc = new AssetLocation
         {
-            Name = req.Name, BranchId = req.BranchId, ParentId = req.ParentId, Level = level
+            Name = req.Name.Trim(), BranchId = req.BranchId, ParentId = req.ParentId, Level = level
         };
         db.AssetLocations.Add(loc);
         await db.SaveChangesAsync(ct);
@@ -99,10 +101,14 @@ public class AssetsController(IApplicationDbContext db, ICurrentUserService cu,
     [Authorize(Roles = "Admin,AssetManager")]
     public async Task<IActionResult> Create([FromBody] CreateAssetRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { message = "Asset name is required." });
+        if (req.Value < 0)
+            return BadRequest(new { message = "Value cannot be negative." });
         var num = await seq.NextAssetNumberAsync();
         var asset = new Asset
         {
-            AssetNumber = num, Name = req.Name, SubName = req.SubName,
+            AssetNumber = num, Name = req.Name.Trim(), SubName = req.SubName?.Trim(),
             SerialNumber = req.SerialNumber, CategoryId = req.CategoryId,
             Keywords = req.Keywords, Value = req.Value,
             DepreciationPct = req.DepreciationPct, Quantity = req.Quantity,
@@ -161,6 +167,8 @@ public class AssetsController(IApplicationDbContext db, ICurrentUserService cu,
     [Authorize(Roles = "Admin,AssetManager")]
     public async Task<IActionResult> Lend([FromBody] LendAssetRequest req, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.BorrowerName))
+            return BadRequest(new { message = "Borrower name is required." });
         var asset = await db.Assets.FindAsync([req.AssetId], ct);
         if (asset == null) return NotFound();
         var num = await seq.NextAssetLendingNumberAsync();
@@ -203,7 +211,7 @@ public class AssetsController(IApplicationDbContext db, ICurrentUserService cu,
         });
         if (!req.StillInService) asset.Status = AssetStatus.Damaged;
         await db.SaveChangesAsync(ct);
-        return Ok();
+        return Ok(new { message = "Damage reported." });
     }
 }
 
