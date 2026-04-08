@@ -51,7 +51,7 @@ export default function GrvWizard() {
   }
 
   const totalVal = prods.reduce((s,p) => s + p.qty * p.cost, 0)
-  const sup = ref?.suppliers.find(s => s.id === d.supplierId)
+  const sup = ref?.suppliers?.find(s => s.id === d.supplierId)
 
   const renderStep = () => {
     switch(step) {
@@ -60,7 +60,7 @@ export default function GrvWizard() {
         <Field label="Supplier *">
           <Select value={d.supplierId} onChange={e => { set('supplierId', e.target.value); set('newSupplierName','') }}>
             <option value="">Select or type new…</option>
-            {ref?.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {(ref?.suppliers ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
         {!d.supplierId && <Field label="New supplier name"><Input value={d.newSupplierName} onChange={e => set('newSupplierName', e.target.value)} placeholder="Type name…" /></Field>}

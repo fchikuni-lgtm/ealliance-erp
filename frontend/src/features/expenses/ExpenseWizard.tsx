@@ -56,7 +56,7 @@ export default function ExpenseWizard() {
   const branch = ref?.branches.find(b => b.id === d.branchId)
   const cat = ref?.categories.find(c => c.id === d.categoryId)
   const pm = ref?.paymentMethods.find(p => p.id === d.paymentMethodId)
-  const sup = ref?.suppliers.find(s => s.id === d.supplierId)
+  const sup = ref?.suppliers?.find(s => s.id === d.supplierId)
 
   const renderStep = () => {
     switch (step) {
@@ -94,7 +94,7 @@ export default function ExpenseWizard() {
         <Field label="Supplier">
           <Select value={d.supplierId} onChange={e => { set('supplierId', e.target.value); set('newSupplierName', '') }}>
             <option value="">Select or type new below…</option>
-            {ref?.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {(ref?.suppliers ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
         {!d.supplierId && <Field label="Or type new supplier name"><Input value={d.newSupplierName} onChange={e => set('newSupplierName', e.target.value)} placeholder="New supplier…" /></Field>}
