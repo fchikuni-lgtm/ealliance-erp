@@ -42,17 +42,13 @@ public static class DependencyInjection
         // ── Payment Gateway ───────────────────────────────────────
         services.AddHttpClient<IPaymentGatewayService, PaymentGatewayService>();
 
-        // ── Hangfire background jobs (with retry on failure) ──────
+        // ── Hangfire background jobs ──────────────────────────────
         services.AddHangfire(hf => hf
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(o => o.UseNpgsqlConnection(connStr)));
-        services.AddHangfireServer(opts =>
-        {
-            opts.WorkerCount = 2;
-            opts.Queues = ["default"];
-        });
+            .UsePostgreSqlStorage(connStr));
+        services.AddHangfireServer();
 
         return services;
     }
