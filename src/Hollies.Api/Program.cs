@@ -16,7 +16,6 @@ Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.File("logs/hollies-.log", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 builder.Host.UseSerilog();
 
@@ -42,7 +41,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Hollies API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "eAlliance API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme { Description = "JWT Bearer token", Name = "Authorization", In = ParameterLocation.Header, Type = SecuritySchemeType.ApiKey, Scheme = "Bearer" });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement { [new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }] = [] });
 });
@@ -53,7 +52,7 @@ var app = builder.Build();
 app.UseSerilogRequestLogging();
 app.UseStaticFiles();
 app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hollies API v1"));
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "eAlliance API v1"));
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -64,43 +63,60 @@ app.MapHangfireDashboard("/jobs");
 // Health check — used by Railway for zero-downtime deploys
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-// Redirect root to setup page if no users exist, otherwise to app
+// Redirect root to setup page if no users exist, otherwise to swagger
 app.MapGet("/", async (ApplicationDbContext db) =>
 {
-    var hasUsers = await db.Users.AnyAsync();
-    return hasUsers ? Results.Redirect("/api") : Results.Redirect("/setup.html");
-});
-
-// Auto-create schema on startup
-// Uses EnsureCreated when no migrations exist, MigrateAsync when they do
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
-        var pending = db.Database.GetPendingMigrations();
-        if (pending.Any())
-            await db.Database.MigrateAsync();
-        else
-            await db.Database.EnsureCreatedAsync();
+        var hasUsers = await db.Users.AnyAsync();
+        return hasUsers ? Results.Redirect("/swagger") : Results.Redirect("/setup.html");
     }
     catch
     {
-        // Fallback: just ensure schema exists
-        await db.Database.EnsureCreatedAsync();
+        return Results.Redirect("/setup.html");
+    }
+});
+
+// DB schema init with retry — waits up to 60s for PostgreSQL to be ready
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var maxRetries = 10;
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            await db.Database.EnsureCreatedAsync();
+            logger.LogInformation("Database schema ready (attempt {Attempt})", attempt);
+            break;
+        }
+        catch (Exception ex) when (attempt < maxRetries)
+        {
+            logger.LogWarning("DB not ready (attempt {Attempt}/{Max}): {Msg} — retrying in 6s…",
+                attempt, maxRetries, ex.Message);
+            await Task.Delay(6000);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Database init failed after {Max} attempts — starting anyway", maxRetries);
+        }
     }
 }
 
-// Register recurring Hangfire jobs
-using (var scope = app.Services.CreateScope())
+// Register Hangfire recurring jobs (wrapped — Hangfire storage may not be ready immediately)
+try
 {
+    using var scope = app.Services.CreateScope();
     var jobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    // Daily at 08:00 Zimbabwe time (UTC+2) — flagged expense digest
     jobManager.AddOrUpdate("daily-digest",
         () => Console.WriteLine($"[{DateTime.UtcNow}] Daily digest job fired"), "0 6 * * *");
-    // 1st of every month — payroll reminder
     jobManager.AddOrUpdate("payroll-reminder",
         () => Console.WriteLine($"[{DateTime.UtcNow}] Payroll reminder job fired"), "0 7 1 * *");
+}
+catch (Exception ex)
+{
+    Log.Warning("Hangfire job registration skipped: {Msg}", ex.Message);
 }
 
 app.Run();
